@@ -1,0 +1,1174 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Max Ma Collection — Book 03 | 數位光影藝廊</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              bg: '#2b231f',
+              surface: '#362c27',
+              card: '#322823',
+              border: '#4a3d36',
+              muted: '#b5a193',
+              gold: '#d4af37'
+            }
+          },
+          fontFamily: {
+            serif: ['Cormorant Garamond', 'Georgia', 'serif'],
+            sans: ['Montserrat', 'Helvetica', 'Arial', 'sans-serif']
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts: Cormorant Garamond & Montserrat -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Montserrat:ital,wght@0,200;0,300;0,400;0,500;0,600;1,300&display=swap" rel="stylesheet">
+
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <!-- OpenCC-js for Traditional/Simplified Chinese Conversion -->
+  <script src="https://cdn.jsdelivr.net/npm/opencc-js@1.0.5/dist/umd/full.js"></script>
+
+  <style>
+    :root {
+      --book-scale: 1;
+      --book-offset-x: 0px;
+    }
+
+    html {
+      font-size: 16px;
+    }
+
+    body {
+      font-family: 'Montserrat', sans-serif;
+      background-color: #2b231f;
+      background-image: radial-gradient(circle at 50% 45%, #362c27 0%, #221a16 100%);
+      color: #f4eee9;
+      overflow: hidden;
+      user-select: none;
+      margin: 0;
+      height: 100dvh;
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      transition: background-color 0.3s ease, color 0.3s ease;
+    }
+
+    /* 參考 index.html 的白色版背景與文字色系 */
+    .light body {
+      background-color: #f7f7f7;
+      background-image: radial-gradient(circle at 50% 45%, #ffffff 0%, #eaeaea 100%);
+      color: #1a1a1a;
+    }
+
+    .font-serif-title {
+      font-family: 'Cormorant Garamond', serif;
+    }
+
+    .tabular-fixed-num {
+      font-variant-numeric: tabular-nums;
+    }
+
+    /* 毛玻璃 HUD 質感 */
+    .glass-hud {
+      background: rgba(43, 35, 31, 0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(74, 61, 54, 1);
+      transition: background 0.3s ease, border-color 0.3s ease;
+    }
+
+    /* 白色版毛玻璃 HUD：參考 index.html 滾動後的白灰玻璃質感 */
+    .light .glass-hud {
+      background: rgba(255, 255, 255, 0.9);
+      border: 1px solid rgba(212, 212, 212, 0.9);
+    }
+
+    #book-viewport {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: 0;
+      position: relative;
+      padding: 8px clamp(44px, 6vw, 92px);
+      box-sizing: border-box;
+      perspective: 2400px;
+      overflow: hidden;
+    }
+
+    #center-window {
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      width: 100%;
+      height: 100%;
+      min-height: 0;
+      transform-style: preserve-3d;
+    }
+
+    /* Single leaf is 448x560 (4:5 ratio of 1080x1350); open spread is 896x560 */
+    #book-stage {
+      position: relative;
+      width: 896px;
+      height: 560px;
+      flex-shrink: 0;
+      transform-style: preserve-3d;
+      transition: transform 0.65s cubic-bezier(0.25, 0.85, 0.25, 1);
+      transform: translateX(calc(var(--book-offset-x) * var(--book-scale))) scale(var(--book-scale));
+      transform-origin: center center;
+      cursor: grab;
+    }
+
+    #book-stage:active {
+      cursor: grabbing;
+    }
+
+    /* Ground shadow beneath the book */
+    #book-ground-shadow {
+      position: absolute;
+      left: 50%;
+      bottom: -18px;
+      width: 86%;
+      height: 30px;
+      transform: translateX(-50%);
+      background: radial-gradient(ellipse at center, rgba(18, 13, 10, 0.58) 0%, rgba(18, 13, 10, 0.2) 58%, rgba(18, 13, 10, 0) 80%);
+      filter: blur(12px);
+      pointer-events: none;
+      z-index: 1;
+      transition: background 0.3s ease;
+    }
+
+    .light #book-ground-shadow {
+      background: radial-gradient(ellipse at center, rgba(23, 23, 23, 0.18) 0%, rgba(23, 23, 23, 0.06) 58%, rgba(23, 23, 23, 0) 80%);
+    }
+
+    .book-leaf {
+      position: absolute;
+      top: 0;
+      width: 448px;
+      height: 560px;
+      background: #251d19;
+      overflow: hidden;
+      box-sizing: border-box;
+      transition: background-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    .light .book-leaf {
+      background: #ffffff;
+    }
+
+    .book-leaf.left-leaf {
+      left: 0;
+      border-radius: 3px 0 0 3px;
+      box-shadow:
+        inset -18px 0 24px -16px rgba(18, 13, 10, 0.45),
+        -6px 12px 28px rgba(18, 13, 10, 0.35);
+      z-index: 2;
+    }
+
+    .light .book-leaf.left-leaf {
+      box-shadow:
+        inset -18px 0 24px -16px rgba(23, 23, 23, 0.14),
+        -6px 10px 24px rgba(23, 23, 23, 0.1);
+    }
+
+    .book-leaf.right-leaf {
+      left: 448px;
+      border-radius: 0 3px 3px 0;
+      box-shadow: 0 14px 30px rgba(18, 13, 10, 0.38);
+      z-index: 2;
+    }
+
+    .light .book-leaf.right-leaf {
+      box-shadow: 0 12px 26px rgba(23, 23, 23, 0.1);
+    }
+
+    #book-stage.is-open .book-leaf.right-leaf {
+      box-shadow:
+        inset 12px 0 18px -14px rgba(18, 13, 10, 0.35),
+        6px 12px 28px rgba(18, 13, 10, 0.35);
+    }
+
+    .light #book-stage.is-open .book-leaf.right-leaf {
+      box-shadow:
+        inset 12px 0 18px -14px rgba(23, 23, 23, 0.1),
+        6px 10px 24px rgba(23, 23, 23, 0.1);
+    }
+
+    .book-leaf img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+      pointer-events: none;
+    }
+
+    /* Center binding fold */
+    #spine-crease {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      left: 448px;
+      width: 22px;
+      transform: translateX(-50%);
+      background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0) 0%,
+        rgba(18, 13, 10, 0.32) 50%,
+        rgba(0, 0, 0, 0) 100%
+      );
+      pointer-events: none;
+      z-index: 12;
+      opacity: 0;
+      transition: opacity 0.65s ease;
+    }
+
+    .light #spine-crease {
+      background: linear-gradient(
+        90deg,
+        rgba(0, 0, 0, 0) 0%,
+        rgba(23, 23, 23, 0.15) 50%,
+        rgba(0, 0, 0, 0) 100%
+      );
+    }
+
+    #book-stage.is-open #spine-crease {
+      opacity: 0.78;
+      transition: opacity 0.85s ease;
+    }
+
+    #book-stage.is-turning #spine-crease {
+      opacity: 0 !important;
+      transition: opacity 0.2s ease;
+    }
+
+    /* 3D Turning Page Container */
+    #turning-sheet {
+      position: absolute;
+      top: 0;
+      width: 448px;
+      height: 560px;
+      transform-style: preserve-3d;
+      pointer-events: none;
+      z-index: 20;
+      display: none;
+    }
+
+    #turning-sheet.turn-next {
+      left: 448px;
+      transform-origin: left center;
+    }
+
+    #turning-sheet.turn-prev {
+      left: 0;
+      transform-origin: right center;
+    }
+
+    .sheet-face {
+      position: absolute;
+      inset: 0;
+      backface-visibility: hidden;
+      -webkit-backface-visibility: hidden;
+      overflow: hidden;
+      background: #251d19;
+    }
+
+    .light .sheet-face {
+      background: #ffffff;
+    }
+
+    .sheet-face img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      display: block;
+    }
+
+    .sheet-back {
+      transform: rotateY(180deg);
+    }
+
+    /* Paper-turn shadow */
+    .sheet-curve-shading {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 5;
+      background: linear-gradient(
+        90deg,
+        rgba(18, 13, 10, 0.22) 0%,
+        rgba(244, 238, 233, 0.04) 40%,
+        rgba(18, 13, 10, 0.06) 72%,
+        rgba(18, 13, 10, 0.25) 100%
+      );
+      opacity: 0.7;
+    }
+
+    /* Mobile single-page centered flipbook layout */
+    @media (max-width: 767px) {
+      #book-viewport {
+        padding: 4px 10px;
+        perspective: 1600px;
+      }
+
+      #center-window {
+        width: min(90vw, calc(56dvh * 0.8));
+        height: min(calc(90vw * 1.25), 56dvh);
+        border-radius: 6px;
+        box-shadow: 0 16px 34px rgba(18, 13, 10, 0.42);
+        background: #251d19;
+      }
+
+      .light #center-window {
+        box-shadow: 0 14px 30px rgba(23, 23, 23, 0.14);
+        background: #ffffff;
+      }
+
+      #book-stage,
+      #book-stage.is-open {
+        width: 100% !important;
+        height: 100% !important;
+        transform: none !important;
+        transition: none !important;
+      }
+
+      .book-leaf.left-leaf {
+        display: none !important;
+      }
+
+      .book-leaf.right-leaf,
+      #turning-sheet {
+        left: 0 !important;
+        top: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        border-radius: 6px !important;
+        box-shadow: none !important;
+      }
+
+      #turning-sheet.turn-next {
+        transform-origin: left center !important;
+      }
+
+      #turning-sheet.turn-prev {
+        transform-origin: right center !important;
+      }
+
+      #spine-crease,
+      #book-stage.is-open #spine-crease,
+      #book-ground-shadow {
+        display: none !important;
+      }
+    }
+
+    /* Custom scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(244, 238, 233, 0.2);
+      border-radius: 3px;
+    }
+  </style>
+</head>
+<body class="selection:bg-[#f4eee9] selection:text-[#2b231f]">
+
+  <!-- 頂部導覽列 -->
+  <header class="w-full px-4 sm:px-8 md:px-12 py-3.5 sm:py-4 flex flex-wrap items-center justify-between gap-2 shrink-0 z-30">
+    <div class="flex items-center space-x-3 sm:space-x-4">
+      <!-- 返回 Home Page 按鈕 -->
+      <a href="index.html" class="flex items-center justify-center space-x-1.5 px-3 py-1.5 rounded-full border border-[#4a3d36] [.light_&]:border-neutral-300 hover:border-[#f4eee9] [.light_&]:hover:border-neutral-900 text-[#b5a193] [.light_&]:text-neutral-600 hover:text-[#f4eee9] [.light_&]:hover:text-black text-[10px] uppercase tracking-[0.15em] transition-all duration-300" title="返回主頁">
+        <i data-lucide="arrow-left" class="w-3.5 h-3.5"></i>
+        <span class="hidden sm:inline" data-i18n="backHome">Home</span>
+      </a>
+
+      <div class="h-4 w-[1px] bg-[#4a3d36] [.light_&]:bg-neutral-300"></div>
+
+      <div class="flex items-center space-x-3">
+        <span class="text-xs uppercase tracking-[0.3em] font-medium text-[#f4eee9] [.light_&]:text-[#111111]" data-i18n="brandName">Digital Photobook</span>
+        <span class="text-[10px] text-[#b5a193] [.light_&]:text-neutral-600 border border-[#4a3d36] [.light_&]:border-neutral-300 px-2.5 py-0.5 rounded-full hidden sm:inline-block uppercase tracking-[0.15em]" data-i18n="brandSub">Max Ma Collection · Book 03</span>
+      </div>
+    </div>
+
+    <!-- 右上角功能控制 -->
+    <div class="flex items-center flex-wrap gap-2 sm:gap-3">
+      <!-- 語言切換 (EN / 繁 / 簡) -->
+      <div class="flex items-center space-x-2 text-[10px] uppercase tracking-[0.15em] text-[#b5a193] [.light_&]:text-neutral-600">
+        <button id="lang-en" onclick="setLanguage('en')" class="text-[#f4eee9] [.light_&]:text-[#111111] font-medium transition-colors cursor-pointer">EN</button>
+        <span class="text-[#736056] [.light_&]:text-neutral-400">/</span>
+        <button id="lang-tc" onclick="setLanguage('tc')" class="hover:text-[#f4eee9] [.light_&]:hover:text-black transition-colors cursor-pointer">繁</button>
+        <span class="text-[#736056] [.light_&]:text-neutral-400">/</span>
+        <button id="lang-sc" onclick="setLanguage('sc')" class="hover:text-[#f4eee9] [.light_&]:hover:text-black transition-colors cursor-pointer">简</button>
+      </div>
+
+      <!-- 縮放切換 -->
+      <button onclick="zoomBook()" title="Zoom Toggle" class="flex items-center justify-center w-8 h-8 rounded-full border border-[#4a3d36] [.light_&]:border-neutral-300 hover:border-[#f4eee9] [.light_&]:hover:border-neutral-900 text-[#b5a193] [.light_&]:text-neutral-600 hover:text-[#f4eee9] [.light_&]:hover:text-black transition-all duration-300 cursor-pointer">
+        <i data-lucide="zoom-in" id="zoom-icon" class="w-3.5 h-3.5"></i>
+      </button>
+
+      <!-- 全螢幕切換 -->
+      <button onclick="toggleFullscreen()" title="Fullscreen" class="flex items-center justify-center w-8 h-8 rounded-full border border-[#4a3d36] [.light_&]:border-neutral-300 hover:border-[#f4eee9] [.light_&]:hover:border-neutral-900 text-[#b5a193] [.light_&]:text-neutral-600 hover:text-[#f4eee9] [.light_&]:hover:text-black transition-all duration-300 cursor-pointer">
+        <i data-lucide="maximize" id="fs-icon" class="w-3.5 h-3.5"></i>
+      </button>
+
+      <!-- 背景環境音樂與揭書音效切換按鈕 -->
+      <button id="toggle-audio-btn" onclick="toggleAudio()" class="flex items-center justify-center space-x-2 px-3 py-1.5 rounded-full border border-[#4a3d36] [.light_&]:border-neutral-300 hover:border-[#f4eee9] [.light_&]:hover:border-neutral-900 text-[#b5a193] [.light_&]:text-neutral-600 hover:text-[#f4eee9] [.light_&]:hover:text-black text-[10px] uppercase tracking-[0.15em] transition-all duration-300 cursor-pointer" title="背景情調音樂">
+        <i data-lucide="volume-x" id="audio-icon" class="w-3.5 h-3.5 text-[#b5a193] [.light_&]:text-neutral-600"></i>
+        <span class="hidden sm:inline" id="audio-text" data-i18n="audioOff">Audio: Off</span>
+      </button>
+
+      <!-- 黑白主題切換按鈕 -->
+      <button id="theme-toggle" onclick="toggleTheme()" class="flex items-center justify-center w-8 h-8 rounded-full border border-[#4a3d36] [.light_&]:border-neutral-300 hover:border-[#f4eee9] [.light_&]:hover:border-neutral-900 text-[#b5a193] [.light_&]:text-neutral-600 hover:text-[#f4eee9] [.light_&]:hover:text-black transition-all duration-300 cursor-pointer" aria-label="Toggle Theme" title="切換黑／白主題">
+        <i data-lucide="sun" id="sun-icon" class="w-3.5 h-3.5 hidden"></i>
+        <i data-lucide="moon" id="moon-icon" class="w-3.5 h-3.5 block"></i>
+      </button>
+    </div>
+  </header>
+
+  <!-- 中央 3D 畫冊舞台 -->
+  <main id="book-viewport">
+    <!-- 左右翻頁箭頭 -->
+    <button onclick="prevPage()" aria-label="Previous Page" class="glass-hud absolute left-3 sm:left-6 md:left-10 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 text-[#f4eee9] [.light_&]:text-[#111111] hover:border-[#f4eee9] [.light_&]:hover:border-neutral-900 rounded-full shadow-xl flex items-center justify-center transition transform hover:scale-105 z-20 cursor-pointer">
+      <i data-lucide="chevron-left" class="w-4 h-4"></i>
+    </button>
+    <button onclick="nextPage()" aria-label="Next Page" class="glass-hud absolute right-3 sm:right-6 md:right-10 top-1/2 -translate-y-1/2 w-9 h-9 sm:w-10 sm:h-10 text-[#f4eee9] [.light_&]:text-[#111111] hover:border-[#f4eee9] [.light_&]:hover:border-neutral-900 rounded-full shadow-xl flex items-center justify-center transition transform hover:scale-105 z-20 cursor-pointer">
+      <i data-lucide="chevron-right" class="w-4 h-4"></i>
+    </button>
+
+    <!-- 3D 畫冊視窗 -->
+    <div id="center-window">
+      <div id="book-stage">
+        <div id="book-ground-shadow"></div>
+
+        <!-- 左頁 -->
+        <div class="book-leaf left-leaf" id="base-left-leaf">
+          <img id="base-left-img" src="" alt="Left Page">
+        </div>
+
+        <!-- 右頁 -->
+        <div class="book-leaf right-leaf" id="base-right-leaf">
+          <img id="base-right-img" src="" alt="Right Page">
+        </div>
+
+        <!-- 書脊中縫陰影 -->
+        <div id="spine-crease"></div>
+
+        <!-- 3D 動態翻頁層 -->
+        <div id="turning-sheet">
+          <div class="sheet-face sheet-front">
+            <img id="turn-front-img" src="" alt="Turning Front">
+            <div class="sheet-curve-shading"></div>
+          </div>
+          <div class="sheet-face sheet-back">
+            <img id="turn-back-img" src="" alt="Turning Back">
+            <div class="sheet-curve-shading"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- 底部固定位置毛玻璃 HUD 進度導覽列 -->
+  <footer class="w-full px-4 sm:px-8 pb-4 sm:pb-5 pt-1.5 shrink-0 z-30 flex justify-center">
+    <div class="glass-hud w-full max-w-4xl px-5 py-3 rounded-2xl sm:rounded-full shadow-2xl grid grid-cols-1 sm:grid-cols-[240px_1fr_180px] items-center gap-2.5 sm:gap-4">
+      <!-- 左側固定寬度區：書名 -->
+      <div class="w-full flex items-center gap-2.5 text-xs tracking-[0.15em] uppercase min-w-0">
+        <div class="flex items-center space-x-2 text-[#f4eee9] [.light_&]:text-[#111111] min-w-0">
+          <i data-lucide="book-open" class="w-3.5 h-3.5 text-[#ffffff] [.light_&]:text-[#171717] shrink-0"></i>
+          <span id="page-indicator" class="font-medium truncate">CORRIDORS OF ANTIQUITY</span>
+        </div>
+      </div>
+
+      <!-- 中間固定定位進度滑動條 -->
+      <div class="w-full flex items-center space-x-3 min-w-0">
+        <span id="slider-start-label" class="w-11 text-center text-[10px] uppercase tracking-[0.15em] text-[#b5a193] [.light_&]:text-neutral-600 shrink-0" data-i18n="sliderStart">Cover</span>
+        <div class="relative flex-1 flex items-center">
+          <div class="w-full h-1.5 bg-[#4a3d36] [.light_&]:bg-neutral-300/80 rounded-full overflow-hidden pointer-events-none">
+            <div id="page-bar-fill" class="h-full bg-[#ffffff] [.light_&]:bg-[#171717] transition-all duration-300" style="width: 0%;"></div>
+          </div>
+          <input type="range" id="page-slider" min="0" max="9" value="0" step="1" oninput="goToSpread(parseInt(this.value))"
+                 class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+        </div>
+        <span id="slider-end-label" class="w-11 text-center text-[10px] uppercase tracking-[0.15em] text-[#b5a193] [.light_&]:text-neutral-600 shrink-0" data-i18n="sliderEnd">End</span>
+      </div>
+
+      <!-- 右側固定寬度區：冊數／頁數資訊 -->
+      <div class="w-full flex items-center justify-end text-[10px] uppercase tracking-[0.15em] text-[#b5a193] [.light_&]:text-neutral-600 shrink-0">
+        <span id="page-subinfo" class="tabular-fixed-num whitespace-nowrap">Book 03 · 17 Pages</span>
+      </div>
+    </div>
+  </footer>
+
+  <!-- 提示訊息 Toast -->
+  <div id="toast" class="glass-hud fixed bottom-24 left-1/2 -translate-x-1/2 text-[#f4eee9] [.light_&]:text-[#111111] px-5 py-2 rounded-full shadow-2xl text-[11px] uppercase tracking-[0.15em] transition-all duration-300 opacity-0 pointer-events-none z-50">
+    Message
+  </div>
+
+  <script>
+    const BOOK_TITLE = "CORRIDORS OF ANTIQUITY";
+
+    const PAGE_FILES = [
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-cover.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-01.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-02.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-03.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-04.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-05.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-06.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-07.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-08.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-09.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-10.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-11.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-12.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-13.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-14.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-15.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-16.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-17.jpg?raw=true",
+      "https://github.com/noreg714/test-b/blob/main/images/maxma-book-03-end.jpg?raw=true"
+    ];
+
+    const MAX_SPREAD = 9;
+    const MAX_SINGLE = PAGE_FILES.length - 1;
+    const resolvedUrls = new Array(PAGE_FILES.length).fill(null);
+
+    let currentLang = 'en';
+
+    const translations = {
+      en: {
+        "backHome": "Home",
+        "brandName": "Digital Photobook",
+        "brandSub": "Max Ma Collection · Book 03",
+        "audioOff": "Audio: Off",
+        "audioOn": "Audio: On",
+        "sliderStart": "Cover",
+        "sliderEnd": "End",
+        "bookTitle": BOOK_TITLE,
+        "subBook03": "Book 03 · 17 Pages",
+        "subPagesOf17": "{n} / 17 Pages",
+        "subPOf17": "p.{n} of 17",
+        "toastAudioOn": "Ambient Audio & Page Sound On",
+        "toastAudioOff": "Audio Muted",
+        "toastZoomIn": "Zoomed In",
+        "toastZoomOut": "Zoom Reset",
+        "toastFsErr": "Fullscreen unavailable"
+      },
+      tc: {
+        "backHome": "主頁",
+        "brandName": "電子畫冊",
+        "brandSub": "Max Ma Collection · Book 03",
+        "audioOff": "背景音: 關",
+        "audioOn": "背景音: 開",
+        "sliderStart": "封面",
+        "sliderEnd": "封底",
+        "bookTitle": BOOK_TITLE,
+        "subBook03": "Book 03 · 17 頁",
+        "subPagesOf17": "{n} / 17 頁",
+        "subPOf17": "第 {n} 頁 / 17 頁",
+        "toastAudioOn": "背景音效與揭書聲已開啟",
+        "toastAudioOff": "音效已關閉",
+        "toastZoomIn": "已放大",
+        "toastZoomOut": "已還原大小",
+        "toastFsErr": "無法切換全螢幕"
+      }
+    };
+
+    function getDict() {
+      if (currentLang === 'sc') {
+        if (!translations.sc && typeof OpenCC !== 'undefined') {
+          const converter = OpenCC.Converter({ from: 'hk', to: 'cn' });
+          const scDict = {};
+          for (let key in translations.tc) {
+            scDict[key] = converter(translations.tc[key]);
+          }
+          translations.sc = scDict;
+        }
+        return translations.sc || translations.tc;
+      }
+      return translations[currentLang] || translations.en;
+    }
+
+    function t(key, vars = {}) {
+      let str = getDict()[key] || translations.en[key] || '';
+      for (const k in vars) {
+        str = str.replace(`{${k}}`, vars[k]);
+      }
+      return str;
+    }
+
+    function isMobileView() {
+      return window.innerWidth <= 767;
+    }
+
+    function getMaxIndex() {
+      return isMobileView() ? MAX_SINGLE : MAX_SPREAD;
+    }
+
+    function preloadSources() {
+      PAGE_FILES.forEach((fileName, idx) => {
+        const candidates = [
+          'images/' + fileName,
+          './' + fileName,
+          'jpg/' + fileName
+        ];
+        let cIdx = 0;
+        const probe = new Image();
+        probe.onload = () => {
+          resolvedUrls[idx] = candidates[cIdx];
+          syncStaticLeaves();
+        };
+        probe.onerror = () => {
+          cIdx += 1;
+          if (cIdx < candidates.length) {
+            probe.src = candidates[cIdx];
+          } else {
+            resolvedUrls[idx] = candidates[0];
+          }
+        };
+        probe.src = candidates[0];
+      });
+    }
+
+    function getPageUrl(index) {
+      if (index === null || index < 0 || index >= PAGE_FILES.length) return '';
+      return resolvedUrls[index] || ('images/' + PAGE_FILES[index]);
+    }
+
+    let currentSpread = 0;
+    let isZoomed = false;
+
+    const bgAudio = new Audio('https://noreg714.github.io/test/audio/amb-river-and-birds.mp3');
+    bgAudio.loop = true;
+
+    const flipAudioTemplate = new Audio('https://noreg714.github.io/test/audio/book-opening.mp3');
+    flipAudioTemplate.preload = 'auto';
+
+    let isAudioPlaying = false;
+
+    let animState = {
+      active: false,
+      direction: null,
+      fromSpread: 0,
+      toSpread: 0,
+      progress: 0,
+      startTime: 0,
+      duration: 900
+    };
+
+    function updateBookLayoutTransform(shouldBeOpen) {
+      const stage = document.getElementById('book-stage');
+      if (!stage) return;
+
+      if (isMobileView()) {
+        stage.style.transform = 'none';
+        return;
+      }
+
+      const viewport = document.getElementById('book-viewport');
+      const header = document.querySelector('header');
+      const footer = document.querySelector('footer');
+      const headerH = header ? header.offsetHeight : 64;
+      const footerH = footer ? footer.offsetHeight : 72;
+
+      const vw = viewport ? viewport.clientWidth : window.innerWidth;
+      const vh = viewport
+        ? viewport.clientHeight
+        : Math.max(260, window.innerHeight - headerH - footerH);
+
+      const baseWidth = 896;
+      const baseHeight = 560;
+      const availW = Math.max(260, vw - (window.innerWidth >= 768 ? 136 : 44));
+      const availH = Math.max(200, vh - 24);
+
+      const effectiveWidth = shouldBeOpen ? baseWidth : 448;
+      const maxScaleCap = shouldBeOpen ? 1.22 : 1.38;
+      const fitScale = Math.min(availW / effectiveWidth, availH / baseHeight, maxScaleCap);
+      const zoomFactor = isZoomed ? 1.15 : 1;
+      const finalScale = Math.max(0.3, fitScale * zoomFactor);
+
+      // 封面（單右頁）時向左偏移半頁（-224px），令封面視覺置中
+      const offsetX = shouldBeOpen ? 0 : -224;
+
+      stage.style.setProperty('--book-scale', finalScale.toFixed(4));
+      stage.style.setProperty('--book-offset-x', `${offsetX}px`);
+      stage.style.transform = `translateX(${(offsetX * finalScale).toFixed(2)}px) scale(${finalScale.toFixed(4)})`;
+    }
+
+    function playFlipSound() {
+      if (!isAudioPlaying) return;
+      try {
+        const sfx = flipAudioTemplate.cloneNode();
+        sfx.volume = 0.85;
+        sfx.play().catch(() => {});
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function easeInOutSmooth(t) {
+      const clamped = Math.min(1, Math.max(0, t));
+      return 0.5 - 0.5 * Math.cos(Math.PI * clamped);
+    }
+
+    function getSpreadPages(spread) {
+      if (spread <= 0) {
+        return { leftIdx: null, rightIdx: 0 };
+      }
+      if (spread >= MAX_SPREAD) {
+        return { leftIdx: 17, rightIdx: 18 };
+      }
+      const leftIdx = spread * 2 - 1;
+      const rightIdx = spread * 2;
+      return { leftIdx, rightIdx };
+    }
+
+    function formatPageLabel() {
+      return t('bookTitle');
+    }
+
+    function formatSubInfo(idx) {
+      const maxIdx = getMaxIndex();
+      const clamped = Math.min(maxIdx, Math.max(0, idx));
+      if (isMobileView()) {
+        if (clamped <= 0) return t('subBook03');
+        if (clamped >= MAX_SINGLE) return t('subPagesOf17', { n: 17 });
+        return t('subPagesOf17', { n: clamped });
+      }
+      if (clamped <= 0) return t('subBook03');
+      if (clamped >= MAX_SPREAD) return t('subPagesOf17', { n: 17 });
+      const rightPageNum = clamped * 2;
+      return t('subPOf17', { n: rightPageNum });
+    }
+
+    function updateHUD(idx) {
+      const maxIdx = getMaxIndex();
+      const clamped = Math.min(maxIdx, Math.max(0, idx));
+      const indicator = document.getElementById('page-indicator');
+      const subinfo = document.getElementById('page-subinfo');
+      const barFill = document.getElementById('page-bar-fill');
+      const slider = document.getElementById('page-slider');
+      slider.max = maxIdx;
+      slider.value = clamped;
+      indicator.innerText = formatPageLabel();
+      if (subinfo) subinfo.innerText = formatSubInfo(clamped);
+      if (barFill) {
+        const pct = maxIdx > 0 ? (clamped / maxIdx) * 100 : 0;
+        barFill.style.width = `${pct.toFixed(1)}%`;
+      }
+    }
+
+    function updateStaticI18n() {
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (key === 'audioOff' || key === 'audioOn') return;
+        const val = t(key);
+        if (val) el.innerText = val;
+      });
+      const audioText = document.getElementById('audio-text');
+      if (audioText) {
+        audioText.innerText = isAudioPlaying ? t('audioOn') : t('audioOff');
+      }
+    }
+
+    function setLanguage(lang) {
+      currentLang = lang;
+      document.documentElement.lang = lang === 'en' ? 'en' : (lang === 'tc' ? 'zh-HK' : 'zh-CN');
+
+      const btnEn = document.getElementById('lang-en');
+      const btnTc = document.getElementById('lang-tc');
+      const btnSc = document.getElementById('lang-sc');
+
+      [btnEn, btnTc, btnSc].forEach(b => {
+        if (b) b.className = "hover:text-[#f4eee9] [.light_&]:hover:text-black transition-colors cursor-pointer";
+      });
+
+      if (lang === 'en' && btnEn) {
+        btnEn.className = "text-[#f4eee9] [.light_&]:text-[#111111] font-medium transition-colors cursor-pointer";
+      } else if (lang === 'tc' && btnTc) {
+        btnTc.className = "text-[#f4eee9] [.light_&]:text-[#111111] font-medium transition-colors cursor-pointer";
+      } else if (lang === 'sc' && btnSc) {
+        btnSc.className = "text-[#f4eee9] [.light_&]:text-[#111111] font-medium transition-colors cursor-pointer";
+      }
+
+      updateStaticI18n();
+      updateHUD(currentSpread);
+    }
+
+    function syncStaticLeaves() {
+      const stage = document.getElementById('book-stage');
+      const leftLeaf = document.getElementById('base-left-leaf');
+      const rightLeaf = document.getElementById('base-right-leaf');
+      const leftImg = document.getElementById('base-left-img');
+      const rightImg = document.getElementById('base-right-img');
+      const turningSheet = document.getElementById('turning-sheet');
+      const frontImg = document.getElementById('turn-front-img');
+      const backImg = document.getElementById('turn-back-img');
+
+      const activeIdx = animState.active ? animState.fromSpread : currentSpread;
+      const targetIdx = animState.active ? animState.toSpread : currentSpread;
+      const p = animState.active ? easeInOutSmooth(animState.progress) : 0;
+
+      if (animState.active) {
+        stage.classList.add('is-turning');
+      } else {
+        stage.classList.remove('is-turning');
+      }
+
+      if (isMobileView()) {
+        stage.classList.remove('is-open');
+        stage.style.transform = 'none';
+
+        const fromPage = Math.min(MAX_SINGLE, Math.max(0, activeIdx));
+        const toPage = Math.min(MAX_SINGLE, Math.max(0, targetIdx));
+
+        if (!animState.active) {
+          turningSheet.style.display = 'none';
+          turningSheet.style.transform = 'none';
+          turningSheet.style.opacity = '0';
+          rightLeaf.style.display = 'block';
+          rightLeaf.style.opacity = '1';
+          rightImg.src = getPageUrl(fromPage);
+          return;
+        }
+
+        rightLeaf.style.display = 'block';
+        rightLeaf.style.opacity = '1';
+        rightImg.src = getPageUrl(toPage);
+
+        turningSheet.style.display = 'block';
+        frontImg.src = getPageUrl(fromPage);
+        backImg.src = '';
+
+        if (animState.direction === 'next') {
+          rightImg.src = getPageUrl(toPage);
+          frontImg.src = getPageUrl(fromPage);
+          turningSheet.classList.remove('turn-prev');
+          turningSheet.classList.add('turn-next');
+          const angle = -135 * p;
+          const liftZ = Math.sin(p * Math.PI) * 18;
+          turningSheet.style.transform = `translateZ(${liftZ.toFixed(1)}px) rotateY(${angle.toFixed(2)}deg)`;
+          turningSheet.style.opacity = Math.max(0, 1 - Math.pow(p, 1.35)).toFixed(3);
+        } else {
+          rightImg.src = getPageUrl(fromPage);
+          frontImg.src = getPageUrl(toPage);
+          turningSheet.classList.remove('turn-prev');
+          turningSheet.classList.add('turn-next');
+          const angle = -135 * (1 - p);
+          const liftZ = Math.sin(p * Math.PI) * 18;
+          turningSheet.style.transform = `translateZ(${liftZ.toFixed(1)}px) rotateY(${angle.toFixed(2)}deg)`;
+          turningSheet.style.opacity = Math.min(1, 0.2 + Math.pow(p, 0.7) * 0.8).toFixed(3);
+        }
+        return;
+      }
+
+      // Desktop / Tablet spread behavior
+      turningSheet.style.opacity = '1';
+      const base = getSpreadPages(activeIdx);
+      const next = getSpreadPages(targetIdx);
+
+      const shouldBeOpen = activeIdx > 0 || (animState.active && animState.direction === 'next' && p > 0.35);
+      if (shouldBeOpen) {
+        stage.classList.add('is-open');
+      } else if (!animState.active || targetIdx === 0) {
+        stage.classList.remove('is-open');
+      }
+      updateBookLayoutTransform(shouldBeOpen);
+
+      if (!animState.active) {
+        turningSheet.style.display = 'none';
+        turningSheet.style.transform = 'none';
+        if (activeIdx <= 0) {
+          leftLeaf.style.display = 'none';
+          rightLeaf.style.display = 'block';
+          rightImg.src = getPageUrl(0);
+        } else {
+          leftLeaf.style.display = 'block';
+          rightLeaf.style.display = 'block';
+          leftImg.src = getPageUrl(base.leftIdx);
+          rightImg.src = getPageUrl(base.rightIdx);
+        }
+        return;
+      }
+
+      turningSheet.style.display = 'block';
+
+      if (animState.direction === 'next') {
+        turningSheet.classList.remove('turn-prev');
+        turningSheet.classList.add('turn-next');
+
+        if (activeIdx > 0 && base.leftIdx !== null) {
+          leftLeaf.style.display = 'block';
+          leftImg.src = getPageUrl(base.leftIdx);
+        } else {
+          leftLeaf.style.display = 'none';
+        }
+
+        rightLeaf.style.display = 'block';
+        rightImg.src = getPageUrl(next.rightIdx);
+
+        const angle = -180 * p;
+        const liftZ = Math.sin(p * Math.PI) * 26;
+        turningSheet.style.transform = `translateZ(${liftZ.toFixed(1)}px) rotateY(${angle.toFixed(2)}deg)`;
+
+        frontImg.src = getPageUrl(base.rightIdx);
+        backImg.src = getPageUrl(next.leftIdx);
+      } else if (animState.direction === 'prev') {
+        turningSheet.classList.remove('turn-next');
+        turningSheet.classList.add('turn-prev');
+
+        if (targetIdx > 0 && next.leftIdx !== null) {
+          leftLeaf.style.display = 'block';
+          leftImg.src = getPageUrl(next.leftIdx);
+        } else {
+          leftLeaf.style.display = 'none';
+        }
+
+        rightLeaf.style.display = 'block';
+        rightImg.src = getPageUrl(base.rightIdx);
+
+        const angle = 180 * p;
+        const liftZ = Math.sin(p * Math.PI) * 26;
+        turningSheet.style.transform = `translateZ(${liftZ.toFixed(1)}px) rotateY(${angle.toFixed(2)}deg)`;
+
+        frontImg.src = getPageUrl(base.leftIdx);
+        backImg.src = getPageUrl(next.rightIdx);
+      }
+    }
+
+    function stepTurn(timestamp) {
+      if (!animState.active) return;
+      if (!animState.startTime) animState.startTime = timestamp;
+      const elapsed = timestamp - animState.startTime;
+      animState.progress = Math.min(1, elapsed / animState.duration);
+
+      syncStaticLeaves();
+
+      if (animState.progress < 1) {
+        requestAnimationFrame(stepTurn);
+      } else {
+        currentSpread = animState.toSpread;
+        animState.active = false;
+        animState.direction = null;
+        animState.progress = 0;
+        animState.startTime = 0;
+        updateHUD(currentSpread);
+        syncStaticLeaves();
+      }
+    }
+
+    function startTurn(targetIdx, explicitDir = null) {
+      const maxIdx = getMaxIndex();
+      const clamped = Math.min(maxIdx, Math.max(0, targetIdx));
+      if (animState.active || clamped === currentSpread) return;
+
+      const dir = explicitDir || (clamped > currentSpread ? 'next' : 'prev');
+      playFlipSound();
+      animState = {
+        active: true,
+        direction: dir,
+        fromSpread: currentSpread,
+        toSpread: clamped,
+        progress: 0,
+        startTime: 0,
+        duration: isMobileView() ? 750 : 1050
+      };
+      updateHUD(clamped);
+      requestAnimationFrame(stepTurn);
+    }
+
+    function nextPage() {
+      const maxIdx = getMaxIndex();
+      if (currentSpread < maxIdx && !animState.active) {
+        startTurn(currentSpread + 1, 'next');
+      }
+    }
+
+    function prevPage() {
+      if (currentSpread > 0 && !animState.active) {
+        startTurn(currentSpread - 1, 'prev');
+      }
+    }
+
+    function goToSpread(idxNum) {
+      if (animState.active) return;
+      const maxIdx = getMaxIndex();
+      const clamped = Math.min(maxIdx, Math.max(0, idxNum));
+      if (clamped !== currentSpread) {
+        startTurn(clamped);
+      }
+    }
+
+    const stageEl = document.getElementById('book-stage');
+    let dragStartX = null;
+    stageEl.addEventListener('pointerdown', (e) => {
+      if (animState.active) return;
+      dragStartX = e.clientX;
+    });
+
+    window.addEventListener('pointerup', (e) => {
+      if (dragStartX === null) return;
+      const dx = e.clientX - dragStartX;
+      dragStartX = null;
+      if (dx < -45) {
+        nextPage();
+      } else if (dx > 45) {
+        prevPage();
+      }
+    });
+
+    // 環境背景音樂 + 揭書音效切換
+    function toggleAudio() {
+      const icon = document.getElementById('audio-icon');
+      const text = document.getElementById('audio-text');
+
+      if (!isAudioPlaying) {
+        bgAudio.play().then(() => {
+          isAudioPlaying = true;
+          icon.setAttribute('data-lucide', 'volume-2');
+          icon.className = "w-3.5 h-3.5 text-[#f4eee9] [.light_&]:text-[#111111] animate-pulse";
+          text.innerText = t('audioOn');
+          lucide.createIcons();
+          showToast(t('toastAudioOn'));
+        }).catch(e => {
+          console.log("Audio play error:", e);
+        });
+      } else {
+        bgAudio.pause();
+        isAudioPlaying = false;
+        icon.setAttribute('data-lucide', 'volume-x');
+        icon.className = "w-3.5 h-3.5 text-[#b5a193] [.light_&]:text-neutral-600";
+        text.innerText = t('audioOff');
+        lucide.createIcons();
+        showToast(t('toastAudioOff'));
+      }
+    }
+
+    // 黑白主題切換
+    function toggleTheme() {
+      const htmlElement = document.documentElement;
+      const sunIcon = document.getElementById('sun-icon');
+      const moonIcon = document.getElementById('moon-icon');
+
+      htmlElement.classList.toggle('light');
+      const isLight = htmlElement.classList.contains('light');
+
+      if (sunIcon && moonIcon) {
+        if (isLight) {
+          sunIcon.classList.remove('hidden');
+          sunIcon.classList.add('block');
+          moonIcon.classList.remove('block');
+          moonIcon.classList.add('hidden');
+        } else {
+          sunIcon.classList.remove('block');
+          sunIcon.classList.add('hidden');
+          moonIcon.classList.remove('hidden');
+          moonIcon.classList.add('block');
+        }
+      }
+
+      lucide.createIcons();
+    }
+
+    function zoomBook() {
+      isZoomed = !isZoomed;
+      const zoomIcon = document.getElementById('zoom-icon');
+      updateBookLayoutTransform(currentSpread > 0);
+      if (isZoomed) {
+        zoomIcon.setAttribute('data-lucide', 'zoom-out');
+        showToast(t('toastZoomIn'));
+      } else {
+        zoomIcon.setAttribute('data-lucide', 'zoom-in');
+        showToast(t('toastZoomOut'));
+      }
+      lucide.createIcons();
+    }
+
+    function toggleFullscreen() {
+      const icon = document.getElementById('fs-icon');
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => {
+          showToast(t('toastFsErr'));
+        });
+        icon.setAttribute('data-lucide', 'minimize');
+      } else {
+        if (document.exitFullscreen) {
+          document.exitFullscreen();
+        }
+        icon.setAttribute('data-lucide', 'maximize');
+      }
+      lucide.createIcons();
+    }
+
+    function showToast(message) {
+      const toast = document.getElementById('toast');
+      toast.innerText = message;
+      toast.style.opacity = '1';
+      setTimeout(() => {
+        toast.style.opacity = '0';
+      }, 2200);
+    }
+
+    window.addEventListener('keydown', (e) => {
+      if (e.key === 'ArrowRight' || e.key === 'PageDown') {
+        nextPage();
+      } else if (e.key === 'ArrowLeft' || e.key === 'PageUp') {
+        prevPage();
+      }
+    });
+
+    const handleViewportResize = () => {
+      const maxIdx = getMaxIndex();
+      if (currentSpread > maxIdx) {
+        currentSpread = maxIdx;
+      }
+      updateHUD(currentSpread);
+      syncStaticLeaves();
+    };
+
+    window.addEventListener('resize', handleViewportResize);
+
+    if (window.visualViewport) {
+      window.visualViewport.addEventListener('resize', handleViewportResize);
+    }
+
+    if (typeof ResizeObserver !== 'undefined') {
+      window.addEventListener('DOMContentLoaded', () => {
+        const vp = document.getElementById('book-viewport');
+        if (vp) {
+          const ro = new ResizeObserver(() => {
+            updateBookLayoutTransform(currentSpread > 0 || (animState.active && animState.direction === 'next'));
+          });
+          ro.observe(vp);
+        }
+      });
+    }
+
+    window.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      updateStaticI18n();
+      updateHUD(0);
+      preloadSources();
+      syncStaticLeaves();
+    });
+  </script>
+</body>
+</html>
